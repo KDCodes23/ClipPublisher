@@ -22,8 +22,13 @@ textarea {
   font: inherit;
 }
 
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .app {
-  width: min(1100px, 92vw);
+  width: min(1180px, 92vw);
   margin: 0 auto;
   padding: 32px 0;
 }
@@ -52,7 +57,7 @@ h1 {
 
 .subtitle {
   color: #b9b9b9;
-  max-width: 620px;
+  max-width: 650px;
   font-size: 1rem;
   line-height: 1.6;
 }
@@ -69,6 +74,20 @@ h1 {
 
 .panel {
   margin-bottom: 22px;
+}
+
+.panel-title-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+
+.panel-subtitle {
+  color: #aaa;
+  margin: -6px 0 0;
+  line-height: 1.5;
 }
 
 h2,
@@ -123,21 +142,58 @@ textarea {
   line-height: 1.5;
 }
 
+.file-preview {
+  margin-top: 18px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(229, 48, 48, 0.1);
+  border: 1px solid rgba(229, 48, 48, 0.24);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+}
+
+.file-label {
+  color: #ff9a9a;
+  margin: 0 0 4px;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.file-name {
+  margin: 0;
+  word-break: break-word;
+}
+
+.file-size {
+  white-space: nowrap;
+  color: #ddd;
+  background: rgba(255, 255, 255, 0.09);
+  padding: 8px 10px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+}
+
 .primary-btn,
 .secondary-btn,
-.copy-btn {
+.copy-btn,
+.upload-btn {
   border: none;
   cursor: pointer;
   border-radius: 14px;
   font-weight: 700;
   transition:
     transform 0.16s ease,
-    opacity 0.16s ease;
+    opacity 0.16s ease,
+    background 0.16s ease;
 }
 
 .primary-btn:hover,
 .secondary-btn:hover,
-.copy-btn:hover {
+.copy-btn:hover,
+.upload-btn:hover {
   transform: translateY(-1px);
   opacity: 0.9;
 }
@@ -163,6 +219,15 @@ textarea {
   padding: 9px 13px;
 }
 
+.upload-btn {
+  width: 100%;
+  margin-top: 14px;
+  background: rgba(229, 48, 48, 0.18);
+  color: white;
+  border: 1px solid rgba(229, 48, 48, 0.45);
+  padding: 12px 14px;
+}
+
 .results {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -177,8 +242,14 @@ textarea {
 }
 
 .caption-card textarea {
-  min-height: 270px;
+  min-height: 320px;
   margin-top: 12px;
+}
+
+@media (max-width: 950px) {
+  .results {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 850px) {
@@ -187,12 +258,16 @@ textarea {
     align-items: flex-start;
   }
 
-  .grid,
-  .results {
+  .grid {
     grid-template-columns: 1fr;
   }
 
   .secondary-btn {
     width: 100%;
+  }
+
+  .file-preview {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }

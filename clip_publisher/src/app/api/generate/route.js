@@ -32,7 +32,7 @@ export async function POST(request) {
         {
           role: "system",
           content:
-            "You create short-form captions for gaming clips. Keep it natural, punchy, and creator-style. Do not mention AI.",
+            "You create short-form captions, titles, descriptions, hashtags, and tags for gaming clips. Keep it natural, creator-style, short, and punchy. Do not mention AI.",
         },
         {
           role: "user",
@@ -49,11 +49,19 @@ Rules:
 - Make it sound natural, not corporate.
 - Make it sound like a small streamer/gamer wrote it.
 - Keep it short and punchy.
-- Avoid overusing hashtags.
 - TikTok should be casual and quick.
-- Instagram should be slightly cleaner.
-- YouTube Shorts should include title, description, hashtags, and tags.
+- Instagram should be slightly cleaner but still fun.
+- YouTube Shorts should include a strong title, description, hashtags, and searchable tags.
+- Every hashtag must include the # symbol.
+- Return 8 to 12 hashtags for TikTok.
+- Return 10 to 15 hashtags for Instagram.
+- Return 4 to 6 hashtags for YouTube.
+- Hashtags must be relevant to the game, clip type, streamer content, and platform.
+- Include gaming, streamer, and clip-specific hashtags.
+- Do not return empty hashtag arrays.
 - Do not make up fake facts.
+- No markdown.
+- No code block.
 `,
         },
       ],
@@ -70,10 +78,19 @@ Rules:
                 type: "object",
                 additionalProperties: false,
                 properties: {
-                  caption: { type: "string" },
+                  caption: {
+                    type: "string",
+                    description: "A short TikTok caption.",
+                  },
                   hashtags: {
                     type: "array",
-                    items: { type: "string" },
+                    minItems: 8,
+                    maxItems: 12,
+                    items: {
+                      type: "string",
+                      description:
+                        "A TikTok hashtag with the # symbol included.",
+                    },
                   },
                 },
                 required: ["caption", "hashtags"],
@@ -82,10 +99,19 @@ Rules:
                 type: "object",
                 additionalProperties: false,
                 properties: {
-                  caption: { type: "string" },
+                  caption: {
+                    type: "string",
+                    description: "A clean but fun Instagram Reels caption.",
+                  },
                   hashtags: {
                     type: "array",
-                    items: { type: "string" },
+                    minItems: 10,
+                    maxItems: 15,
+                    items: {
+                      type: "string",
+                      description:
+                        "An Instagram hashtag with the # symbol included.",
+                    },
                   },
                 },
                 required: ["caption", "hashtags"],
@@ -94,15 +120,33 @@ Rules:
                 type: "object",
                 additionalProperties: false,
                 properties: {
-                  title: { type: "string" },
-                  description: { type: "string" },
+                  title: {
+                    type: "string",
+                    description: "A short YouTube Shorts title.",
+                  },
+                  description: {
+                    type: "string",
+                    description: "A short YouTube Shorts description.",
+                  },
                   hashtags: {
                     type: "array",
-                    items: { type: "string" },
+                    minItems: 4,
+                    maxItems: 6,
+                    items: {
+                      type: "string",
+                      description:
+                        "A YouTube hashtag with the # symbol included.",
+                    },
                   },
                   tags: {
                     type: "array",
-                    items: { type: "string" },
+                    minItems: 8,
+                    maxItems: 18,
+                    items: {
+                      type: "string",
+                      description:
+                        "A searchable YouTube tag without the # symbol.",
+                    },
                   },
                 },
                 required: ["title", "description", "hashtags", "tags"],
