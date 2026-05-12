@@ -1,14 +1,33 @@
 import OpenAI from "openai";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 
 export async function POST(request) {
   try {
-    const apiKey = process.env.OPENAI_API_KEY;
+    // Resolve the current user (if logged in) and their API key
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    let apiKey = process.env.OPENAI_API_KEY;
+
+    if (user) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("openai_api_key")
+        .eq("id", user.id)
+        .single();
+
+      if (profile?.openai_api_key) {
+        apiKey = profile.openai_api_key;
+      }
+    }
 
     if (!apiKey) {
       return Response.json(
         {
           error:
-            "OPENAI_API_KEY is missing. Make sure .env.local exists in the clip_publisher folder and restart the dev server.",
+            "No OpenAI API key found. Add yours in Account settings, or ask the admin to set a server key.",
         },
         { status: 500 }
       );
@@ -52,10 +71,12 @@ Rules:
 - TikTok should be casual and quick.
 - Instagram should be slightly cleaner but still fun.
 - YouTube Shorts should include a strong title, description, hashtags, and searchable tags.
+- Snapchat should be the shortest and most viral — caption under 80 characters.
 - Every hashtag must include the # symbol.
 - Return 8 to 12 hashtags for TikTok.
 - Return 10 to 15 hashtags for Instagram.
 - Return 4 to 6 hashtags for YouTube.
+- Return 3 to 5 hashtags for Snapchat.
 - Hashtags must be relevant to the game, clip type, streamer content, and platform.
 - Include gaming, streamer, and clip-specific hashtags.
 - Do not return empty hashtag arrays.
@@ -88,8 +109,7 @@ Rules:
                     maxItems: 12,
                     items: {
                       type: "string",
-                      description:
-                        "A TikTok hashtag with the # symbol included.",
+                      description: "A TikTok hashtag with the # symbol.",
                     },
                   },
                 },
@@ -109,8 +129,7 @@ Rules:
                     maxItems: 15,
                     items: {
                       type: "string",
-                      description:
-                        "An Instagram hashtag with the # symbol included.",
+                      description: "An Instagram hashtag with the # symbol.",
                     },
                   },
                 },
@@ -134,8 +153,7 @@ Rules:
                     maxItems: 6,
                     items: {
                       type: "string",
-                      description:
-                        "A YouTube hashtag with the # symbol included.",
+                      description: "A YouTube hashtag with the # symbol.",
                     },
                   },
                   tags: {
@@ -151,8 +169,29 @@ Rules:
                 },
                 required: ["title", "description", "hashtags", "tags"],
               },
+              snapchat: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  caption: {
+                    type: "string",
+                    description:
+                      "A very short Snapchat Spotlight caption, under 80 characters.",
+                  },
+                  hashtags: {
+                    type: "array",
+                    minItems: 3,
+                    maxItems: 5,
+                    items: {
+                      type: "string",
+                      description: "A Snapchat hashtag with the # symbol.",
+                    },
+                  },
+                },
+                required: ["caption", "hashtags"],
+              },
             },
-            required: ["tiktok", "instagram", "youtube"],
+            required: ["tiktok", "instagram", "youtube", "snapchat"],
           },
         },
       },
@@ -169,14 +208,30 @@ Rules:
 
     const parsed = JSON.parse(text);
 
+    // Log usage — non-blocking, never fails the request
+    if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      try {
+        const adminClient = createAdminClient();
+        await adminClient.from("usage_logs").insert({
+          user_id: user?.id ?? null,
+          user_email: user?.email ?? null,
+          model: "gpt-4.1-mini",
+          input_tokens: response.usage?.input_tokens ?? null,
+          output_tokens: response.usage?.output_tokens ?? null,
+          total_tokens: response.usage?.total_tokens ?? null,
+          game,
+          clip_type: clipType,
+        });
+      } catch (logError) {
+        console.error("Usage logging failed:", logError);
+      }
+    }
+
     return Response.json(parsed);
   } catch (error) {
     console.error("AI generation error:", error);
-
     return Response.json(
-      {
-        error: error.message || "Failed to generate captions.",
-      },
+      { error: error.message || "Failed to generate captions." },
       { status: 500 }
     );
   }
