@@ -2,7 +2,7 @@
 
 export const dynamic = "force-dynamic";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 export default function Home() {
@@ -35,8 +35,12 @@ export default function Home() {
   }, []);
 
   async function handleSignOut() {
-    await supabase.auth.signOut();
-    setUser(null);
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+    } catch {
+      alert("Sign out failed. Please try again.");
+    }
   }
 
   function normalizeHashtags(hashtags, fallback) {
@@ -103,7 +107,11 @@ export default function Home() {
 
   async function copyText(text) {
     if (!text.trim()) return;
-    await navigator.clipboard.writeText(text);
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      alert("Could not copy — please copy the text manually.");
+    }
   }
 
   async function exportCaptions() {
@@ -291,7 +299,7 @@ ${snapchat}
 
 function DropZone({ onFile, selectedVideo }) {
   const [dragging, setDragging] = useState(false);
-  const inputRef = useState(null);
+  const inputRef = useRef(null);
 
   function formatSize(bytes) {
     if (!bytes) return "0 MB";
@@ -331,6 +339,7 @@ function DropZone({ onFile, selectedVideo }) {
         accept="video/*"
         className="dropzone-input"
         onChange={(e) => handleFiles(e.target.files)}
+        
       />
       {selectedVideo ? (
         <div className="dropzone-filled">
