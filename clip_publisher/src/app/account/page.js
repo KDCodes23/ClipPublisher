@@ -3,8 +3,29 @@
 export const dynamic = "force-dynamic";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+
+const PLATFORMS = [
+  {
+    id: "youtube",
+    label: "YouTube",
+    description: "Upload directly to YouTube Shorts",
+    connectUrl: "/api/connect/youtube",
+  },
+  {
+    id: "tiktok",
+    label: "TikTok",
+    description: "Publish clips to your TikTok account",
+    connectUrl: "/api/connect/tiktok",
+  },
+  {
+    id: "instagram",
+    label: "Instagram",
+    description: "Post Reels to your Business/Creator account",
+    connectUrl: "/api/connect/instagram",
+  },
+];
 
 export default function AccountPage() {
   const [user, setUser] = useState(null);
@@ -12,20 +33,18 @@ export default function AccountPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [connected, setConnected] = useState({});
+  const [disconnecting, setDisconnecting] = useState(null);
+  const [notification, setNotification] = useState("");
 
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
 
   useEffect(() => {
     async function load() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        router.push("/login");
-        return;
-      }
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { router.push("/login"); return; }
 
       setUser(user);
 
@@ -34,16 +53,30 @@ export default function AccountPage() {
         .select("openai_api_key")
         .eq("id", user.id)
         .single();
+      if (profile?.openai_api_key) setApiKey(profile.openai_api_key);
 
-      if (profile?.openai_api_key) {
-        setApiKey(profile.openai_api_key);
+      const res = await fetch("/api/connect/status");
+      if (res.ok) {
+        const { connected } = await res.json();
+        setConnected(connected);
       }
 
       setLoading(false);
     }
-
     load();
   }, []);
+
+  useEffect(() => {
+    const connectedPlatform = searchParams.get("connected");
+    const errorPlatform = searchParams.get("error");
+    if (connectedPlatform) {
+      setNotification(`${connectedPlatform} connected successfully.`);
+      setTimeout(() => setNotification(""), 4000);
+    } else if (errorPlatform) {
+      setNotification(`Failed to connect: ${errorPlatform.replace("_", " ")}`);
+      setTimeout(() => setNotification(""), 4000);
+    }
+  }, [searchParams]);
 
   async function saveApiKey() {
     setSaving(true);
@@ -65,9 +98,24 @@ export default function AccountPage() {
       .eq("id", user.id);
   }
 
+  async function disconnect(platform) {
+    setDisconnecting(platform);
+    await fetch("/api/connect/disconnect", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ platform }),
+    });
+    setConnected((prev) => {
+      const next = { ...prev };
+      delete next[platform];
+      return next;
+    });
+    setDisconnecting(null);
+  }
+
   async function signOut() {
     await supabase.auth.signOut();
-    router.push("/");
+    router.push("/login");
   }
 
   if (loading) return null;
@@ -86,9 +134,51 @@ export default function AccountPage() {
           </div>
         </div>
 
+        {notification && (
+          <div className="notification">{notification}</div>
+        )}
+
         <div className="panel">
           <h2>Account Info</h2>
           <p className="panel-subtitle">{user.email}</p>
+        </div>
+
+        <div className="panel">
+          <h2>Connected Platforms</h2>
+          <p className="panel-subtitle">
+            Connect your accounts to upload clips directly from ClipPilot.
+          </p>
+
+          <div className="platforms-list">
+            {PLATFORMS.map((p) => {
+              const info = connected[p.id];
+              return (
+                <div key={p.id} className="platform-row">
+                  <div className="platform-info">
+                    <span className="platform-name">{p.label}</span>
+                    <span className="platform-desc">
+                      {info
+                        ? `Connected as ${info.username || "unknown"}`
+                        : p.description}
+                    </span>
+                  </div>
+                  {info ? (
+                    <button
+                      onClick={() => disconnect(p.id)}
+                      className="secondary-btn"
+                      disabled={disconnecting === p.id}
+                    >
+                      {disconnecting === p.id ? "Disconnecting..." : "Disconnect"}
+                    </button>
+                  ) : (
+                    <a href={p.connectUrl} className="primary-btn">
+                      Connect
+                    </a>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         <div className="panel">

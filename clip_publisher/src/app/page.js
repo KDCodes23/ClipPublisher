@@ -21,17 +21,24 @@ export default function Home() {
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [user, setUser] = useState(null);
+  const [connected, setConnected] = useState({});
+  const [uploadStatus, setUploadStatus] = useState({});
 
   const supabase = createClient();
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => setUser(user));
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => setUser(session?.user ?? null)
+    );
     return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/connect/status")
+      .then((r) => r.json())
+      .then(({ connected }) => setConnected(connected ?? {}))
+      .catch(() => {});
   }, []);
 
   async function handleSignOut() {
@@ -44,9 +51,7 @@ export default function Home() {
   }
 
   function normalizeHashtags(hashtags, fallback) {
-    if (!Array.isArray(hashtags) || hashtags.length === 0) {
-      return fallback;
-    }
+    if (!Array.isArray(hashtags) || hashtags.length === 0) return fallback;
     return hashtags
       .map((tag) => {
         const cleaned = String(tag).trim();
@@ -61,34 +66,18 @@ export default function Home() {
   async function generateCaptions() {
     try {
       setIsGenerating(true);
-
       const response = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ clipName, game, clipType, tone, context }),
       });
-
       const data = await response.json();
+      if (!response.ok) { alert(data.error || "Failed to generate captions."); return; }
 
-      if (!response.ok) {
-        console.error(data);
-        alert(data.error || "Failed to generate captions.");
-        return;
-      }
-
-      const tiktokHashtags = normalizeHashtags(data.tiktok?.hashtags, [
-        "#leagueoflegends", "#lolclips", "#gamingtiktok", "#twitchstreamer", "#funnygaming",
-      ]);
-      const instagramHashtags = normalizeHashtags(data.instagram?.hashtags, [
-        "#LeagueOfLegends", "#GamingReels", "#TwitchStreamer", "#StreamerMoments", "#FunnyGamingMoments",
-      ]);
-      const youtubeHashtags = normalizeHashtags(data.youtube?.hashtags, [
-        "#LeagueOfLegends", "#LoLShorts", "#GamingShorts", "#TwitchStreamer",
-      ]);
-      const snapchatHashtags = normalizeHashtags(data.snapchat?.hashtags, [
-        "#gaming", "#clips", "#viral",
-      ]);
-
+      const tiktokHashtags = normalizeHashtags(data.tiktok?.hashtags, ["#leagueoflegends", "#lolclips", "#gamingtiktok", "#twitchstreamer", "#funnygaming"]);
+      const instagramHashtags = normalizeHashtags(data.instagram?.hashtags, ["#LeagueOfLegends", "#GamingReels", "#TwitchStreamer", "#StreamerMoments", "#FunnyGamingMoments"]);
+      const youtubeHashtags = normalizeHashtags(data.youtube?.hashtags, ["#LeagueOfLegends", "#LoLShorts", "#GamingShorts", "#TwitchStreamer"]);
+      const snapchatHashtags = normalizeHashtags(data.snapchat?.hashtags, ["#gaming", "#clips", "#viral"]);
       const youtubeTags = Array.isArray(data.youtube?.tags)
         ? data.youtube.tags.join(", ")
         : "league of legends, lol shorts, gaming shorts, twitch streamer";
@@ -119,30 +108,7 @@ export default function Home() {
       await generateCaptions();
       return;
     }
-
-    const content = `ClipPilot Export
-================
-
-Clip:
-${clipName || "No clip selected"}
-
-TikTok
-------
-${tiktok}
-
-Instagram Reels
----------------
-${instagram}
-
-YouTube Shorts
---------------
-${youtube}
-
-Snapchat
---------
-${snapchat}
-`;
-
+    const content = `ClipPilot Export\n================\n\nClip:\n${clipName || "No clip selected"}\n\nTikTok\n------\n${tiktok}\n\nInstagram Reels\n---------------\n${instagram}\n\nYouTube Shorts\n--------------\n${youtube}\n\nSnapchat\n--------\n${snapchat}\n`;
     const blob = new Blob([content], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -152,12 +118,161 @@ ${snapchat}
     URL.revokeObjectURL(url);
   }
 
-  function handleUploadPlaceholder(platform) {
-    if (!selectedVideo) {
-      alert("Select a video first.");
-      return;
+  function setStatus(platform, value) {
+    setUploadStatus((prev) => ({ ...prev, [platform]: value }));
+  }
+
+  // Upload video to Supabase Storage and return the storage path.
+  // Used as the first step for TikTok and Instagram uploads.
+  async function uploadToStorage(onProgress) {
+    if (!selectedVideo) throw new Error("No video selected");
+
+    const res = await fetch("/api/storage/upload-url", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ filename: selectedVideo.name }),
+    });
+    const { uploadUrl, path, error } = await res.json();
+    if (error) throw new Error(error);
+
+    await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("PUT", uploadUrl);
+      xhr.setRequestHeader("Content-Type", selectedVideo.type || "video/mp4");
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
+      };
+      xhr.onload = () => (xhr.status < 400 ? resolve() : reject(new Error(`Storage upload failed: ${xhr.status}`)));
+      xhr.onerror = () => reject(new Error("Storage upload failed"));
+      xhr.send(selectedVideo);
+    });
+
+    return path;
+  }
+
+  async function uploadToYouTube() {
+    if (!selectedVideo) { alert("Select a video first."); return; }
+    if (!youtube) { alert("Generate captions first."); return; }
+
+    setStatus("youtube", { state: "uploading", progress: 0 });
+    try {
+      const titleMatch = youtube.match(/Title:\n(.+)/);
+      const title = titleMatch?.[1]?.trim() || clipName || "Gaming Clip";
+      const tagsMatch = youtube.match(/Tags:\n(.+)/s);
+      const tags = tagsMatch
+        ? tagsMatch[1].split(",").map((t) => t.trim()).filter(Boolean)
+        : [];
+
+      const initRes = await fetch("/api/upload/youtube", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          description: youtube,
+          tags,
+          contentType: selectedVideo.type || "video/mp4",
+          fileSize: selectedVideo.size,
+        }),
+      });
+      const { uploadUrl, error } = await initRes.json();
+      if (error) throw new Error(error);
+
+      await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("PUT", uploadUrl);
+        xhr.setRequestHeader("Content-Type", selectedVideo.type || "video/mp4");
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) setStatus("youtube", { state: "uploading", progress: Math.round((e.loaded / e.total) * 100) });
+        };
+        xhr.onload = () => (xhr.status < 400 ? resolve() : reject(new Error(`YouTube upload failed: ${xhr.status}`)));
+        xhr.onerror = () => reject(new Error("YouTube upload failed"));
+        xhr.send(selectedVideo);
+      });
+
+      setStatus("youtube", { state: "done" });
+    } catch (err) {
+      setStatus("youtube", { state: "error", message: err.message });
     }
-    alert(`${platform} upload is the next integration step.\n\nVideo ready: ${selectedVideo.name}`);
+  }
+
+  async function uploadToTikTok() {
+    if (!selectedVideo) { alert("Select a video first."); return; }
+    if (!tiktok) { alert("Generate captions first."); return; }
+
+    setStatus("tiktok", { state: "uploading", progress: 0 });
+    try {
+      const storagePath = await uploadToStorage((p) =>
+        setStatus("tiktok", { state: "uploading", progress: p })
+      );
+
+      setStatus("tiktok", { state: "publishing" });
+
+      const res = await fetch("/api/upload/tiktok", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ caption: tiktok, storagePath }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      setStatus("tiktok", { state: "done" });
+    } catch (err) {
+      setStatus("tiktok", { state: "error", message: err.message });
+    }
+  }
+
+  async function uploadToInstagram() {
+    if (!selectedVideo) { alert("Select a video first."); return; }
+    if (!instagram) { alert("Generate captions first."); return; }
+
+    setStatus("instagram", { state: "uploading", progress: 0 });
+    try {
+      const storagePath = await uploadToStorage((p) =>
+        setStatus("instagram", { state: "uploading", progress: p })
+      );
+
+      setStatus("instagram", { state: "processing" });
+
+      // Create media container
+      const containerRes = await fetch("/api/upload/instagram", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ caption: instagram, storagePath }),
+      });
+      const containerData = await containerRes.json();
+      if (!containerRes.ok) throw new Error(containerData.error);
+
+      const { creation_id } = containerData;
+
+      // Poll until Instagram finishes processing the video
+      for (let i = 0; i < 20; i++) {
+        await new Promise((r) => setTimeout(r, 5000));
+        const publishRes = await fetch("/api/upload/instagram/publish", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ creation_id }),
+        });
+        const publishData = await publishRes.json();
+        if (!publishRes.ok) throw new Error(publishData.error);
+        if (publishData.status === "done") break;
+        if (publishData.status === "error") throw new Error(publishData.error);
+        // still "processing" — keep polling
+      }
+
+      setStatus("instagram", { state: "done" });
+    } catch (err) {
+      setStatus("instagram", { state: "error", message: err.message });
+    }
+  }
+
+  function getUploadHandler(platform) {
+    if (!connected[platform]) {
+      return () => alert(`Connect your ${platform} account in Account settings first.`);
+    }
+    if (platform === "youtube") return uploadToYouTube;
+    if (platform === "tiktok") return uploadToTikTok;
+    if (platform === "instagram") return uploadToInstagram;
+    return () => alert("Snapchat upload is not supported via API.");
   }
 
   return (
@@ -199,7 +314,10 @@ ${snapchat}
             </div>
           </div>
 
-          <DropZone onFile={(file) => { setClipName(file.name); setSelectedVideo(file); }} selectedVideo={selectedVideo} />
+          <DropZone
+            onFile={(file) => { setClipName(file.name); setSelectedVideo(file); }}
+            selectedVideo={selectedVideo}
+          />
 
           <div className="grid">
             <label className="field">
@@ -207,14 +325,14 @@ ${snapchat}
               <input
                 type="text"
                 value={game}
-                onChange={(event) => setGame(event.target.value)}
+                onChange={(e) => setGame(e.target.value)}
                 placeholder="Example: League of Legends"
               />
             </label>
 
             <label className="field">
               <span>Clip Type</span>
-              <select value={clipType} onChange={(event) => setClipType(event.target.value)}>
+              <select value={clipType} onChange={(e) => setClipType(e.target.value)}>
                 <option value="funny reaction">Funny Reaction</option>
                 <option value="chat troll">Chat Troll</option>
                 <option value="outplay">Outplay</option>
@@ -231,7 +349,7 @@ ${snapchat}
 
             <label className="field">
               <span>Tone</span>
-              <select value={tone} onChange={(event) => setTone(event.target.value)}>
+              <select value={tone} onChange={(e) => setTone(e.target.value)}>
                 <option value="funny">Funny</option>
                 <option value="chaotic">Chaotic</option>
                 <option value="clean">Clean</option>
@@ -243,12 +361,11 @@ ${snapchat}
             </label>
           </div>
 
-
           <label className="field full">
             <span>What happened in the clip?</span>
             <textarea
               value={context}
-              onChange={(event) => setContext(event.target.value)}
+              onChange={(e) => setContext(e.target.value)}
               placeholder="Example: Chat said jumpscare and I actually panicked for no reason."
             />
           </label>
@@ -264,32 +381,36 @@ ${snapchat}
             value={tiktok}
             setValue={setTiktok}
             onCopy={() => copyText(tiktok)}
-            onUpload={() => handleUploadPlaceholder("TikTok")}
-            uploadLabel="Upload to TikTok"
+            onUpload={getUploadHandler("tiktok")}
+            uploadLabel={connected.tiktok ? "Upload to TikTok" : "Connect TikTok to upload"}
+            uploadStatus={uploadStatus.tiktok}
           />
           <CaptionCard
             title="Instagram Reels"
             value={instagram}
             setValue={setInstagram}
             onCopy={() => copyText(instagram)}
-            onUpload={() => handleUploadPlaceholder("Instagram")}
-            uploadLabel="Upload to Instagram"
+            onUpload={getUploadHandler("instagram")}
+            uploadLabel={connected.instagram ? "Upload to Instagram" : "Connect Instagram to upload"}
+            uploadStatus={uploadStatus.instagram}
           />
           <CaptionCard
             title="YouTube Shorts"
             value={youtube}
             setValue={setYoutube}
             onCopy={() => copyText(youtube)}
-            onUpload={() => handleUploadPlaceholder("YouTube")}
-            uploadLabel="Upload to YouTube"
+            onUpload={getUploadHandler("youtube")}
+            uploadLabel={connected.youtube ? "Upload to YouTube" : "Connect YouTube to upload"}
+            uploadStatus={uploadStatus.youtube}
           />
           <CaptionCard
             title="Snapchat"
             value={snapchat}
             setValue={setSnapchat}
             onCopy={() => copyText(snapchat)}
-            onUpload={() => handleUploadPlaceholder("Snapchat")}
+            onUpload={() => alert("Snapchat upload is not supported via API.")}
             uploadLabel="Upload to Snapchat"
+            uploadStatus={null}
           />
         </section>
       </main>
@@ -311,20 +432,9 @@ function DropZone({ onFile, selectedVideo }) {
     if (file && file.type.startsWith("video/")) onFile(file);
   }
 
-  function onDragOver(e) {
-    e.preventDefault();
-    setDragging(true);
-  }
-
-  function onDragLeave() {
-    setDragging(false);
-  }
-
-  function onDrop(e) {
-    e.preventDefault();
-    setDragging(false);
-    handleFiles(e.dataTransfer.files);
-  }
+  function onDragOver(e) { e.preventDefault(); setDragging(true); }
+  function onDragLeave() { setDragging(false); }
+  function onDrop(e) { e.preventDefault(); setDragging(false); handleFiles(e.dataTransfer.files); }
 
   return (
     <label
@@ -339,7 +449,6 @@ function DropZone({ onFile, selectedVideo }) {
         accept="video/*"
         className="dropzone-input"
         onChange={(e) => handleFiles(e.target.files)}
-        
       />
       {selectedVideo ? (
         <div className="dropzone-filled">
@@ -361,7 +470,27 @@ function DropZone({ onFile, selectedVideo }) {
   );
 }
 
-function CaptionCard({ title, value, setValue, onCopy, onUpload, uploadLabel }) {
+function UploadStatusBadge({ status }) {
+  if (!status) return null;
+  if (status.state === "uploading") {
+    return <span className="upload-badge upload-badge--progress">Uploading {status.progress}%</span>;
+  }
+  if (status.state === "publishing") {
+    return <span className="upload-badge upload-badge--progress">Publishing...</span>;
+  }
+  if (status.state === "processing") {
+    return <span className="upload-badge upload-badge--progress">Processing...</span>;
+  }
+  if (status.state === "done") {
+    return <span className="upload-badge upload-badge--done">Uploaded</span>;
+  }
+  if (status.state === "error") {
+    return <span className="upload-badge upload-badge--error" title={status.message}>Failed</span>;
+  }
+  return null;
+}
+
+function CaptionCard({ title, value, setValue, onCopy, onUpload, uploadLabel, uploadStatus }) {
   const [copied, setCopied] = useState(false);
 
   async function handleCopy() {
@@ -371,20 +500,29 @@ function CaptionCard({ title, value, setValue, onCopy, onUpload, uploadLabel }) 
     setTimeout(() => setCopied(false), 1200);
   }
 
+  const isUploading = uploadStatus?.state === "uploading" ||
+    uploadStatus?.state === "publishing" ||
+    uploadStatus?.state === "processing";
+
   return (
     <article className="caption-card">
       <div className="caption-header">
         <h3>{title}</h3>
-        <button onClick={handleCopy} className="copy-btn">
-          {copied ? "Copied!" : "Copy"}
-        </button>
+        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+          <UploadStatusBadge status={uploadStatus} />
+          <button onClick={handleCopy} className="copy-btn">
+            {copied ? "Copied!" : "Copy"}
+          </button>
+        </div>
       </div>
       <textarea
         value={value}
-        onChange={(event) => setValue(event.target.value)}
+        onChange={(e) => setValue(e.target.value)}
         placeholder={`${title} caption will appear here...`}
       />
-      <button onClick={onUpload} className="upload-btn">{uploadLabel}</button>
+      <button onClick={onUpload} className="upload-btn" disabled={isUploading}>
+        {isUploading ? "Uploading..." : uploadLabel}
+      </button>
     </article>
   );
 }

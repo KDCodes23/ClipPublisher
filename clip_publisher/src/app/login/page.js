@@ -94,7 +94,6 @@ export default function LoginPage() {
           </button>
         </p>
 
-        <a href="/" className="login-back">← Back to app</a>
       </div>
     </main>
   );
