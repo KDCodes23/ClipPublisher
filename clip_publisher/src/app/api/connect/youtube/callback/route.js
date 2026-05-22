@@ -2,10 +2,11 @@ import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
 export async function GET(request) {
-  const { searchParams } = new URL(request.url);
+  const url = new URL(request.url);
+  const { searchParams } = url;
   const code = searchParams.get("code");
   const error = searchParams.get("error");
-  const base = process.env.NEXT_PUBLIC_SITE_URL;
+  const base = process.env.NEXT_PUBLIC_SITE_URL ?? url.origin;
 
   if (error || !code) {
     return NextResponse.redirect(`${base}/account?error=youtube_denied`);

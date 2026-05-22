@@ -2,7 +2,7 @@
 
 export const dynamic = "force-dynamic";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -10,24 +10,27 @@ const PLATFORMS = [
   {
     id: "youtube",
     label: "YouTube",
+    icon: "▶",
     description: "Upload directly to YouTube Shorts",
     connectUrl: "/api/connect/youtube",
   },
   {
     id: "tiktok",
     label: "TikTok",
+    icon: "♪",
     description: "Publish clips to your TikTok account",
     connectUrl: "/api/connect/tiktok",
   },
   {
     id: "instagram",
     label: "Instagram",
-    description: "Post Reels to your Business/Creator account",
+    icon: "◈",
+    description: "Post Reels to your Business or Creator account",
     connectUrl: "/api/connect/instagram",
   },
 ];
 
-export default function AccountPage() {
+function AccountPageInner() {
   const [user, setUser] = useState(null);
   const [apiKey, setApiKey] = useState("");
   const [saving, setSaving] = useState(false);
@@ -149,29 +152,31 @@ export default function AccountPage() {
             Connect your accounts to upload clips directly from ClipPilot.
           </p>
 
-          <div className="platforms-list">
+          <div className="platform-cards">
             {PLATFORMS.map((p) => {
               const info = connected[p.id];
               return (
-                <div key={p.id} className="platform-row">
-                  <div className="platform-info">
-                    <span className="platform-name">{p.label}</span>
-                    <span className="platform-desc">
-                      {info
-                        ? `Connected as ${info.username || "unknown"}`
-                        : p.description}
-                    </span>
+                <div key={p.id} className={`platform-card platform-card--${p.id}`}>
+                  <div className="platform-card-icon">{p.icon}</div>
+                  <div className="platform-card-name">{p.label}</div>
+                  <div className="platform-card-desc">
+                    {info
+                      ? `Connected as ${info.username || "your account"}`
+                      : p.description}
                   </div>
                   {info ? (
                     <button
                       onClick={() => disconnect(p.id)}
-                      className="secondary-btn"
+                      className="platform-disconnect-btn"
                       disabled={disconnecting === p.id}
                     >
                       {disconnecting === p.id ? "Disconnecting..." : "Disconnect"}
                     </button>
                   ) : (
-                    <a href={p.connectUrl} className="primary-btn">
+                    <a
+                      href={p.connectUrl}
+                      className={`platform-connect-btn platform-connect-btn--${p.id}`}
+                    >
                       Connect
                     </a>
                   )}
@@ -211,5 +216,13 @@ export default function AccountPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function AccountPage() {
+  return (
+    <Suspense>
+      <AccountPageInner />
+    </Suspense>
   );
 }

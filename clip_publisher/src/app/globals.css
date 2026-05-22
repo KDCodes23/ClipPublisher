@@ -468,24 +468,119 @@ textarea {
 .login-page {
   min-height: 100vh;
   display: flex;
+  align-items: stretch;
+}
+
+/* Left: cinematic video/animation panel */
+.login-cinema {
+  display: none;
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: #060a14;
+}
+
+@media (min-width: 860px) {
+  .login-cinema {
+    display: flex;
+  }
+}
+
+.login-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.55;
+}
+
+/* Fallback animated glow when no video is present */
+.login-cinema-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 30% 60%, rgba(37, 99, 235, 0.45) 0%, transparent 60%),
+    radial-gradient(ellipse at 75% 25%, rgba(99, 37, 200, 0.35) 0%, transparent 55%),
+    radial-gradient(ellipse at 60% 80%, rgba(20, 60, 160, 0.3) 0%, transparent 50%),
+    #060a14;
+  animation: cinemaGlow 8s ease-in-out infinite alternate;
+}
+
+@keyframes cinemaGlow {
+  0%   { opacity: 1; }
+  50%  { opacity: 0.75; }
+  100% { opacity: 1; }
+}
+
+.login-cinema-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to right,
+    transparent 50%,
+    rgba(6, 10, 20, 0.6) 100%
+  );
+}
+
+.login-cinema-content {
+  position: relative;
+  z-index: 1;
+  padding: 56px 52px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  width: 100%;
+}
+
+.login-cinema-content h1 {
+  font-size: clamp(2.8rem, 4vw, 4.2rem);
+  margin-bottom: 12px;
+}
+
+.login-cinema-tagline {
+  color: #8899bb;
+  font-size: 1rem;
+  line-height: 1.6;
+  max-width: 380px;
+  margin: 0;
+}
+
+/* Right: form panel */
+.login-form-side {
+  width: 100%;
+  max-width: 460px;
+  flex-shrink: 0;
+  display: flex;
   align-items: center;
   justify-content: center;
-  padding: 32px 16px;
+  padding: 48px 40px;
+  background: rgba(8, 12, 24, 0.98);
+  border-left: 1px solid rgba(255, 255, 255, 0.07);
 }
 
-.login-card {
+@media (max-width: 859px) {
+  .login-form-side {
+    max-width: 100%;
+    padding: 40px 24px;
+    justify-content: center;
+  }
+}
+
+.login-form-inner {
   width: 100%;
-  max-width: 420px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  border-radius: 24px;
-  padding: 36px 32px;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+  max-width: 380px;
 }
 
-.login-card h1 {
+.login-form-inner h1 {
   font-size: 2rem;
-  margin-bottom: 24px;
+  margin-bottom: 6px;
+}
+
+.login-subtitle {
+  color: #6677aa;
+  font-size: 0.9rem;
+  margin: 0 0 28px;
 }
 
 .login-form {
@@ -536,17 +631,137 @@ textarea {
   text-decoration: underline;
 }
 
-.login-back {
-  display: block;
-  text-align: center;
-  margin-top: 14px;
-  font-size: 0.85rem;
-  color: #4a5a7a;
-  text-decoration: none;
+/* ── Platform cards ── */
+
+.platform-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 20px;
 }
 
-.login-back:hover {
+.platform-card {
+  border-radius: 16px;
+  padding: 20px 18px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-top-width: 3px;
+}
+
+.platform-card--youtube  { border-top-color: #ff0000; }
+.platform-card--tiktok   { border-top-color: #fe2c55; }
+.platform-card--instagram { border-top-color: #e1306c; }
+
+.platform-card-icon {
+  font-size: 1.5rem;
+  margin-bottom: 4px;
+}
+
+.platform-card-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #dce6f5;
+}
+
+.platform-card-desc {
+  font-size: 0.82rem;
+  color: #6677aa;
+  line-height: 1.45;
+  flex: 1;
+}
+
+.platform-connect-btn,
+.platform-disconnect-btn {
+  margin-top: 14px;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  text-decoration: none;
+  text-align: center;
+  display: block;
+}
+
+.platform-connect-btn:hover,
+.platform-disconnect-btn:hover {
+  opacity: 0.85;
+  transform: translateY(-1px);
+}
+
+.platform-connect-btn--youtube {
+  background: #ff0000;
+  color: #fff;
+}
+
+.platform-connect-btn--tiktok {
+  background: #010101;
+  color: #fff;
+  border: 1px solid #fe2c55;
+}
+
+.platform-connect-btn--instagram {
+  background: linear-gradient(135deg, #833ab4 0%, #e1306c 50%, #f56040 100%);
+  color: #fff;
+}
+
+.platform-disconnect-btn {
+  background: rgba(255, 255, 255, 0.06);
   color: #8899bb;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+@media (max-width: 640px) {
+  .platform-cards {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Notification banner ── */
+
+.notification {
+  padding: 12px 18px;
+  border-radius: 12px;
+  background: rgba(110, 231, 183, 0.08);
+  border: 1px solid rgba(110, 231, 183, 0.22);
+  color: #6ee7b7;
+  font-size: 0.9rem;
+  margin-bottom: 20px;
+}
+
+/* ── Upload status badges ── */
+
+.upload-badge {
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.upload-badge--progress {
+  background: rgba(80, 150, 255, 0.12);
+  color: #7ab8ff;
+  border: 1px solid rgba(80, 150, 255, 0.3);
+}
+
+.upload-badge--done {
+  background: rgba(110, 231, 183, 0.1);
+  color: #6ee7b7;
+  border: 1px solid rgba(110, 231, 183, 0.25);
+}
+
+.upload-badge--error {
+  background: rgba(248, 113, 113, 0.1);
+  color: #f87171;
+  border: 1px solid rgba(248, 113, 113, 0.25);
+  cursor: help;
 }
 
 /* ── Account page ── */
