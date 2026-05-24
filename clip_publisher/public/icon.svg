@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#07080f"/>
+  <!-- Purple glow backdrop -->
+  <circle cx="256" cy="256" r="180" fill="url(#glow)" opacity="0.35"/>
+  <!-- Play triangle (clip symbol) -->
+  <polygon points="192,160 192,352 368,256" fill="url(#purple)" rx="8"/>
+  <!-- Sparkle dots -->
+  <circle cx="370" cy="148" r="14" fill="#a78bfa" opacity="0.9"/>
+  <circle cx="400" cy="178" r="8"  fill="#c4b5fd" opacity="0.6"/>
+  <circle cx="350" cy="120" r="6"  fill="#ddd6fe" opacity="0.5"/>
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#7c5cfc"/>
+      <stop offset="100%" stop-color="#07080f" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="purple" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#8b5cf6"/>
+      <stop offset="100%" stop-color="#6d28d9"/>
+    </linearGradient>
+  </defs>
+</svg>

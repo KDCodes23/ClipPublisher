@@ -1,0 +1,44 @@
+{
+  "name": "ClipPilot",
+  "short_name": "ClipPilot",
+  "description": "Generate platform-ready captions and upload gaming clips to TikTok, YouTube, Instagram, and X.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#07080f",
+  "theme_color": "#7c5cfc",
+  "orientation": "portrait-primary",
+  "categories": ["utilities", "entertainment"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Generate Captions",
+      "url": "/",
+      "description": "Open ClipPilot and generate captions"
+    },
+    {
+      "name": "Account Settings",
+      "url": "/account",
+      "description": "Manage connected platforms"
+    }
+  ]
+}
