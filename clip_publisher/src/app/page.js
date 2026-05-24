@@ -3,6 +3,7 @@
 export const dynamic = "force-dynamic";
 
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 export default function Home() {
@@ -23,7 +24,9 @@ export default function Home() {
   const [user, setUser] = useState(null);
   const [connected, setConnected] = useState({});
   const [uploadStatus, setUploadStatus] = useState({});
+  const [quality, setQuality] = useState(2);
 
+  const router = useRouter();
   const supabase = createClient();
 
   useEffect(() => {
@@ -44,7 +47,7 @@ export default function Home() {
   async function handleSignOut() {
     try {
       await supabase.auth.signOut();
-      setUser(null);
+      router.push("/login");
     } catch {
       alert("Sign out failed. Please try again.");
     }
@@ -69,7 +72,7 @@ export default function Home() {
       const response = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clipName, game, clipType, tone, context }),
+        body: JSON.stringify({ clipName, game, clipType, tone, context, quality }),
       });
       const data = await response.json();
       if (!response.ok) { alert(data.error || "Failed to generate captions."); return; }
@@ -370,10 +373,46 @@ export default function Home() {
             />
           </label>
 
+          <div className="quality-slider-wrap">
+            <div className="quality-slider-header">
+              <span className="quality-slider-label">Generation Quality</span>
+              <span className="quality-slider-value">
+                {quality === 1 ? "Fast" : quality === 2 ? "Balanced" : "Best"}
+              </span>
+            </div>
+            <input
+              type="range"
+              min={1}
+              max={3}
+              step={1}
+              value={quality}
+              onChange={(e) => setQuality(Number(e.target.value))}
+              className="quality-slider"
+            />
+            <div className="quality-slider-ticks">
+              <span>Fastest</span>
+              <span>Balanced</span>
+              <span>Best Quality</span>
+            </div>
+          </div>
+
           <button onClick={generateCaptions} className="primary-btn" disabled={isGenerating}>
             {isGenerating ? "Generating..." : "Generate AI Captions"}
           </button>
         </section>
+
+        {Object.keys(connected).length === 0 && (
+          <div className="no-connection-banner">
+            <span className="no-connection-icon">⚠</span>
+            <span>
+              No platforms connected.{" "}
+              <a href="/account" className="no-connection-link">
+                Connect your accounts
+              </a>{" "}
+              to upload clips directly from ClipPilot.
+            </span>
+          </div>
+        )}
 
         <section className="results">
           <CaptionCard

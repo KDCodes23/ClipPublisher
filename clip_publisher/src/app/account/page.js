@@ -13,6 +13,7 @@ const PLATFORMS = [
     icon: "▶",
     description: "Upload directly to YouTube Shorts",
     connectUrl: "/api/connect/youtube",
+    color: "#ff0000",
   },
   {
     id: "tiktok",
@@ -20,6 +21,7 @@ const PLATFORMS = [
     icon: "♪",
     description: "Publish clips to your TikTok account",
     connectUrl: "/api/connect/tiktok",
+    color: "#fe2c55",
   },
   {
     id: "instagram",
@@ -27,6 +29,24 @@ const PLATFORMS = [
     icon: "◈",
     description: "Post Reels to your Business or Creator account",
     connectUrl: "/api/connect/instagram",
+    color: "#e1306c",
+  },
+  {
+    id: "x",
+    label: "X (Twitter)",
+    icon: "✕",
+    description: "Post short video clips to your X timeline",
+    connectUrl: "/api/connect/x",
+    color: "#000000",
+  },
+  {
+    id: "twitch",
+    label: "Twitch",
+    icon: "◉",
+    description: "Import clips from your Twitch channel",
+    connectUrl: "/api/connect/twitch",
+    color: "#9146ff",
+    isSource: true,
   },
 ];
 
@@ -123,6 +143,9 @@ function AccountPageInner() {
 
   if (loading) return null;
 
+  const connectedPlatforms = PLATFORMS.filter((p) => connected[p.id]);
+  const availablePlatforms = PLATFORMS.filter((p) => !connected[p.id]);
+
   return (
     <main className="account-page">
       <div className="account-wrap">
@@ -152,19 +175,19 @@ function AccountPageInner() {
             Connect your accounts to upload clips directly from ClipPilot.
           </p>
 
-          <div className="platform-cards">
-            {PLATFORMS.map((p) => {
-              const info = connected[p.id];
-              return (
-                <div key={p.id} className={`platform-card platform-card--${p.id}`}>
-                  <div className="platform-card-icon">{p.icon}</div>
-                  <div className="platform-card-name">{p.label}</div>
-                  <div className="platform-card-desc">
-                    {info
-                      ? `Connected as ${info.username || "your account"}`
-                      : p.description}
-                  </div>
-                  {info ? (
+          {connectedPlatforms.length > 0 ? (
+            <div className="platform-cards">
+              {connectedPlatforms.map((p) => {
+                const info = connected[p.id];
+                return (
+                  <div key={p.id} className={`platform-card platform-card--${p.id}`}>
+                    <div className="platform-card-icon">{p.icon}</div>
+                    <div className="platform-card-name">{p.label}</div>
+                    <div className="platform-card-desc">
+                      {p.isSource
+                        ? `Importing clips from ${info.username || "your channel"}`
+                        : `Connected as ${info.username || "your account"}`}
+                    </div>
                     <button
                       onClick={() => disconnect(p.id)}
                       className="platform-disconnect-btn"
@@ -172,18 +195,34 @@ function AccountPageInner() {
                     >
                       {disconnecting === p.id ? "Disconnecting..." : "Disconnect"}
                     </button>
-                  ) : (
-                    <a
-                      href={p.connectUrl}
-                      className={`platform-connect-btn platform-connect-btn--${p.id}`}
-                    >
-                      Connect
-                    </a>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="no-connections-msg">No platforms connected yet. Add one below.</p>
+          )}
+
+          {availablePlatforms.length > 0 && (
+            <div className="add-platform-section">
+              <p className="add-platform-label">Add a platform</p>
+              <div className="add-platform-list">
+                {availablePlatforms.map((p) => (
+                  <a
+                    key={p.id}
+                    href={p.connectUrl}
+                    className="add-platform-item"
+                    style={{ "--platform-color": p.color }}
+                  >
+                    <span className="add-platform-icon">{p.icon}</span>
+                    <span className="add-platform-name">{p.label}</span>
+                    {p.isSource && <span className="add-platform-badge">Source</span>}
+                    <span className="add-platform-plus">+</span>
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="panel">

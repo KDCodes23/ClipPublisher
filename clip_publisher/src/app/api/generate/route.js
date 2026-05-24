@@ -36,7 +36,7 @@ export async function POST(request) {
     const client = new OpenAI({ apiKey });
 
     const body = await request.json();
-    const { clipName, game, clipType, tone, context } = body;
+    const { clipName, game, clipType, tone, context, quality = 2 } = body;
 
     if (!game || !clipType || !tone) {
       return Response.json(
@@ -45,8 +45,16 @@ export async function POST(request) {
       );
     }
 
+    const QUALITY_MAP = {
+      1: { model: "gpt-4.1-nano",  max_output_tokens: 500  },
+      2: { model: "gpt-4.1-mini",  max_output_tokens: 900  },
+      3: { model: "gpt-4.1",       max_output_tokens: 1600 },
+    };
+    const { model, max_output_tokens } = QUALITY_MAP[quality] ?? QUALITY_MAP[2];
+
     const response = await client.responses.create({
-      model: "gpt-4.1-mini",
+      model,
+      max_output_tokens,
       input: [
         {
           role: "system",
@@ -215,7 +223,7 @@ Rules:
         await adminClient.from("usage_logs").insert({
           user_id: user?.id ?? null,
           user_email: user?.email ?? null,
-          model: "gpt-4.1-mini",
+          model,
           input_tokens: response.usage?.input_tokens ?? null,
           output_tokens: response.usage?.output_tokens ?? null,
           total_tokens: response.usage?.total_tokens ?? null,

@@ -651,9 +651,11 @@ textarea {
   border-top-width: 3px;
 }
 
-.platform-card--youtube  { border-top-color: #ff0000; }
-.platform-card--tiktok   { border-top-color: #fe2c55; }
+.platform-card--youtube   { border-top-color: #ff0000; }
+.platform-card--tiktok    { border-top-color: #fe2c55; }
 .platform-card--instagram { border-top-color: #e1306c; }
+.platform-card--x         { border-top-color: #ffffff; }
+.platform-card--twitch    { border-top-color: #9146ff; }
 
 .platform-card-icon {
   font-size: 1.5rem;
@@ -717,10 +719,198 @@ textarea {
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+/* ── Add platform section ── */
+
+.no-connections-msg {
+  margin-top: 16px;
+  font-size: 0.88rem;
+  color: #6677aa;
+}
+
+.add-platform-section {
+  margin-top: 24px;
+}
+
+.add-platform-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #4a5568;
+  margin-bottom: 10px;
+}
+
+.add-platform-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.add-platform-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  border-left: 3px solid var(--platform-color, #555);
+}
+
+.add-platform-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.add-platform-icon {
+  font-size: 1rem;
+  color: #8899bb;
+}
+
+.add-platform-name {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #b0bedd;
+}
+
+.add-platform-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #9146ff;
+  background: rgba(145, 70, 255, 0.12);
+  border: 1px solid rgba(145, 70, 255, 0.3);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+.add-platform-plus {
+  font-size: 1.1rem;
+  font-weight: 300;
+  color: #4a5568;
+  margin-left: auto;
+  padding-left: 8px;
+}
+
 @media (max-width: 640px) {
   .platform-cards {
     grid-template-columns: 1fr;
   }
+
+  .add-platform-list {
+    flex-direction: column;
+  }
+}
+
+/* ── Quality slider ── */
+
+.quality-slider-wrap {
+  margin-top: 20px;
+  padding: 16px 18px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 12px;
+}
+
+.quality-slider-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.quality-slider-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #8899bb;
+}
+
+.quality-slider-value {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #dce6f5;
+  min-width: 60px;
+  text-align: right;
+}
+
+.quality-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.12);
+  outline: none;
+  cursor: pointer;
+}
+
+.quality-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #3c82ff;
+  border: 2px solid #fff;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  box-shadow: 0 0 8px rgba(60, 130, 255, 0.5);
+}
+
+.quality-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+  box-shadow: 0 0 14px rgba(60, 130, 255, 0.7);
+}
+
+.quality-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #3c82ff;
+  border: 2px solid #fff;
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(60, 130, 255, 0.5);
+}
+
+.quality-slider-ticks {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+
+.quality-slider-ticks span {
+  font-size: 0.72rem;
+  color: #4a5568;
+}
+
+/* ── No-connection banner ── */
+
+.no-connection-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  background: rgba(255, 180, 0, 0.07);
+  border: 1px solid rgba(255, 180, 0, 0.2);
+  border-radius: 12px;
+  font-size: 0.88rem;
+  color: #c9a84c;
+  margin-bottom: 4px;
+}
+
+.no-connection-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.no-connection-link {
+  color: #f0c040;
+  font-weight: 700;
+  text-decoration: underline;
 }
 
 /* ── Notification banner ── */
