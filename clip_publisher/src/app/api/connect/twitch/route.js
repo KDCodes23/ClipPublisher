@@ -8,7 +8,7 @@ function base64url(buffer) {
 }
 
 export async function GET() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.redirect(new URL("/login", process.env.NEXT_PUBLIC_BASE_URL));
 
@@ -20,7 +20,7 @@ export async function GET() {
   }
 
   const state = base64url(crypto.randomBytes(16));
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   cookieStore.set("twitch_state", state, { httpOnly: true, secure: true, maxAge: 600, path: "/" });
 
   const params = new URLSearchParams({

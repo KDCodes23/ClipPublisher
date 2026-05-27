@@ -8,7 +8,7 @@ export async function GET(request) {
   const state = searchParams.get("state");
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
 
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const savedState = cookieStore.get("twitch_state")?.value;
 
   if (!code || !state || state !== savedState) {
@@ -47,7 +47,7 @@ export async function GET(request) {
   const { data: twitchUsers } = await userRes.json();
   const twitchUser = twitchUsers?.[0];
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.redirect(`${baseUrl}/login`);
 

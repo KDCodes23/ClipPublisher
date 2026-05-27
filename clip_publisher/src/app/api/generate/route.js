@@ -84,7 +84,6 @@ Rules:
 - Return 8 to 12 hashtags for TikTok.
 - Return 10 to 15 hashtags for Instagram.
 - Return 4 to 6 hashtags for YouTube.
-- Return 3 to 5 hashtags for Snapchat.
 - Hashtags must be relevant to the game, clip type, streamer content, and platform.
 - Include gaming, streamer, and clip-specific hashtags.
 - Do not return empty hashtag arrays.
@@ -177,29 +176,8 @@ Rules:
                 },
                 required: ["title", "description", "hashtags", "tags"],
               },
-              snapchat: {
-                type: "object",
-                additionalProperties: false,
-                properties: {
-                  caption: {
-                    type: "string",
-                    description:
-                      "A very short Snapchat Spotlight caption, under 80 characters.",
-                  },
-                  hashtags: {
-                    type: "array",
-                    minItems: 3,
-                    maxItems: 5,
-                    items: {
-                      type: "string",
-                      description: "A Snapchat hashtag with the # symbol.",
-                    },
-                  },
-                },
-                required: ["caption", "hashtags"],
-              },
             },
-            required: ["tiktok", "instagram", "youtube", "snapchat"],
+            required: ["tiktok", "instagram", "youtube"],
           },
         },
       },

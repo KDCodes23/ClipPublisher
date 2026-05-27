@@ -18,7 +18,6 @@ export default function Home() {
   const [tiktok, setTiktok] = useState("");
   const [instagram, setInstagram] = useState("");
   const [youtube, setYoutube] = useState("");
-  const [snapchat, setSnapchat] = useState("");
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [user, setUser] = useState(null);
@@ -80,7 +79,6 @@ export default function Home() {
       const tiktokHashtags = normalizeHashtags(data.tiktok?.hashtags, ["#leagueoflegends", "#lolclips", "#gamingtiktok", "#twitchstreamer", "#funnygaming"]);
       const instagramHashtags = normalizeHashtags(data.instagram?.hashtags, ["#LeagueOfLegends", "#GamingReels", "#TwitchStreamer", "#StreamerMoments", "#FunnyGamingMoments"]);
       const youtubeHashtags = normalizeHashtags(data.youtube?.hashtags, ["#LeagueOfLegends", "#LoLShorts", "#GamingShorts", "#TwitchStreamer"]);
-      const snapchatHashtags = normalizeHashtags(data.snapchat?.hashtags, ["#gaming", "#clips", "#viral"]);
       const youtubeTags = Array.isArray(data.youtube?.tags)
         ? data.youtube.tags.join(", ")
         : "league of legends, lol shorts, gaming shorts, twitch streamer";
@@ -88,7 +86,6 @@ export default function Home() {
       setTiktok(`${data.tiktok?.caption || "This clip had me confused 💀"}\n\n${tiktokHashtags.join(" ")}`);
       setInstagram(`${data.instagram?.caption || "Another normal day on stream 💀"}\n\n${instagramHashtags.join(" ")}`);
       setYoutube(`Title:\n${data.youtube?.title || "This Clip Had Me Confused 💀"}\n\nDescription:\n${data.youtube?.description || "This gaming moment did not go how I expected."}\n\nHashtags:\n${youtubeHashtags.join(" ")}\n\nTags:\n${youtubeTags}`);
-      setSnapchat(`${data.snapchat?.caption || "bro what 💀"}\n\n${snapchatHashtags.join(" ")}`);
     } catch (error) {
       console.error(error);
       alert("Something went wrong while generating captions.");
@@ -107,11 +104,11 @@ export default function Home() {
   }
 
   async function exportCaptions() {
-    if (!tiktok && !instagram && !youtube && !snapchat) {
+    if (!tiktok && !instagram && !youtube) {
       await generateCaptions();
       return;
     }
-    const content = `ClipPilot Export\n================\n\nClip:\n${clipName || "No clip selected"}\n\nTikTok\n------\n${tiktok}\n\nInstagram Reels\n---------------\n${instagram}\n\nYouTube Shorts\n--------------\n${youtube}\n\nSnapchat\n--------\n${snapchat}\n`;
+    const content = `ClipPilot Export\n================\n\nClip:\n${clipName || "No clip selected"}\n\nTikTok\n------\n${tiktok}\n\nInstagram Reels\n---------------\n${instagram}\n\nYouTube Shorts\n--------------\n${youtube}\n`;
     const blob = new Blob([content], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -441,15 +438,6 @@ export default function Home() {
             onUpload={getUploadHandler("youtube")}
             uploadLabel={connected.youtube ? "Upload to YouTube" : "Connect YouTube to upload"}
             uploadStatus={uploadStatus.youtube}
-          />
-          <CaptionCard
-            title="Snapchat"
-            value={snapchat}
-            setValue={setSnapchat}
-            onCopy={() => copyText(snapchat)}
-            onUpload={() => alert("Snapchat upload is not supported via API.")}
-            uploadLabel="Upload to Snapchat"
-            uploadStatus={null}
           />
         </section>
       </main>

@@ -8,7 +8,7 @@ export async function GET(request) {
   const state = searchParams.get("state");
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
 
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const savedState = cookieStore.get("x_state")?.value;
   const codeVerifier = cookieStore.get("x_code_verifier")?.value;
 
@@ -51,7 +51,7 @@ export async function GET(request) {
 
   const { data: xUser } = await userRes.json();
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.redirect(`${baseUrl}/login`);
 
