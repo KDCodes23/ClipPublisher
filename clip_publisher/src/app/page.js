@@ -25,6 +25,12 @@ export default function Home() {
   const [uploadStatus, setUploadStatus] = useState({});
   const [quality, setQuality] = useState(2);
 
+  const [twitchClip, setTwitchClip] = useState(null);
+  const [showTwitchPicker, setShowTwitchPicker] = useState(false);
+  const [twitchClips, setTwitchClips] = useState([]);
+  const [twitchCursor, setTwitchCursor] = useState(null);
+  const [twitchLoading, setTwitchLoading] = useState(false);
+
   const router = useRouter();
   const supabase = createClient();
 
@@ -34,6 +40,19 @@ export default function Home() {
       (_event, session) => setUser(session?.user ?? null)
     );
     return () => subscription.unsubscribe();
+  }, []);
+
+  // Pick up a clip sent from the editor page
+  useEffect(() => {
+    const stored = localStorage.getItem("clipEditor_clip");
+    if (!stored) return;
+    try {
+      const clip = JSON.parse(stored);
+      setTwitchClip(clip);
+      setClipName(clip.title ?? "");
+      if (clip.notes) setContext(clip.notes);
+    } catch {}
+    localStorage.removeItem("clipEditor_clip");
   }, []);
 
   useEffect(() => {
@@ -122,6 +141,34 @@ export default function Home() {
     setUploadStatus((prev) => ({ ...prev, [platform]: value }));
   }
 
+  async function fetchTwitchClips(cursor = null) {
+    setTwitchLoading(true);
+    try {
+      const url = `/api/clips/twitch?limit=20${cursor ? `&cursor=${cursor}` : ""}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setTwitchClips((prev) => cursor ? [...prev, ...data.clips] : data.clips);
+      setTwitchCursor(data.cursor);
+    } catch (err) {
+      alert(err.message || "Failed to load Twitch clips.");
+    } finally {
+      setTwitchLoading(false);
+    }
+  }
+
+  function openTwitchPicker() {
+    setShowTwitchPicker(true);
+    if (twitchClips.length === 0) fetchTwitchClips();
+  }
+
+  function selectTwitchClip(clip) {
+    setTwitchClip(clip);
+    setSelectedVideo(null);
+    setClipName(clip.title);
+    setShowTwitchPicker(false);
+  }
+
   // Upload video to Supabase Storage and return the storage path.
   // Used as the first step for TikTok and Instagram uploads.
   async function uploadToStorage(onProgress) {
@@ -196,21 +243,27 @@ export default function Home() {
   }
 
   async function uploadToTikTok() {
-    if (!selectedVideo) { alert("Select a video first."); return; }
+    if (!selectedVideo && !twitchClip) { alert("Select a video first."); return; }
     if (!tiktok) { alert("Generate captions first."); return; }
 
     setStatus("tiktok", { state: "uploading", progress: 0 });
     try {
-      const storagePath = await uploadToStorage((p) =>
-        setStatus("tiktok", { state: "uploading", progress: p })
-      );
-
-      setStatus("tiktok", { state: "publishing" });
+      let body;
+      if (twitchClip) {
+        setStatus("tiktok", { state: "publishing" });
+        body = { caption: tiktok, videoUrl: twitchClip.videoUrl };
+      } else {
+        const storagePath = await uploadToStorage((p) =>
+          setStatus("tiktok", { state: "uploading", progress: p })
+        );
+        setStatus("tiktok", { state: "publishing" });
+        body = { caption: tiktok, storagePath };
+      }
 
       const res = await fetch("/api/upload/tiktok", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ caption: tiktok, storagePath }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -222,22 +275,28 @@ export default function Home() {
   }
 
   async function uploadToInstagram() {
-    if (!selectedVideo) { alert("Select a video first."); return; }
+    if (!selectedVideo && !twitchClip) { alert("Select a video first."); return; }
     if (!instagram) { alert("Generate captions first."); return; }
 
     setStatus("instagram", { state: "uploading", progress: 0 });
     try {
-      const storagePath = await uploadToStorage((p) =>
-        setStatus("instagram", { state: "uploading", progress: p })
-      );
-
-      setStatus("instagram", { state: "processing" });
+      let body;
+      if (twitchClip) {
+        setStatus("instagram", { state: "processing" });
+        body = { caption: instagram, videoUrl: twitchClip.videoUrl };
+      } else {
+        const storagePath = await uploadToStorage((p) =>
+          setStatus("instagram", { state: "uploading", progress: p })
+        );
+        setStatus("instagram", { state: "processing" });
+        body = { caption: instagram, storagePath };
+      }
 
       // Create media container
       const containerRes = await fetch("/api/upload/instagram", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ caption: instagram, storagePath }),
+        body: JSON.stringify(body),
       });
       const containerData = await containerRes.json();
       if (!containerRes.ok) throw new Error(containerData.error);
@@ -269,10 +328,13 @@ export default function Home() {
     if (!connected[platform]) {
       return () => alert(`Connect your ${platform} account in Account settings first.`);
     }
-    if (platform === "youtube") return uploadToYouTube;
+    if (platform === "youtube") {
+      if (twitchClip) return () => alert("YouTube upload requires a local file. Download the clip from Twitch first, then drop it here.");
+      return uploadToYouTube;
+    }
     if (platform === "tiktok") return uploadToTikTok;
     if (platform === "instagram") return uploadToInstagram;
-    return () => alert("Snapchat upload is not supported via API.");
+    return () => {};
   }
 
   return (
@@ -283,6 +345,7 @@ export default function Home() {
           {user ? (
             <>
               <span className="nav-email">{user.email}</span>
+              <a href="/editor" className="secondary-btn">Editor</a>
               <a href="/account" className="secondary-btn">Account</a>
               <button onClick={handleSignOut} className="secondary-btn">Sign Out</button>
             </>
@@ -314,10 +377,33 @@ export default function Home() {
             </div>
           </div>
 
-          <DropZone
-            onFile={(file) => { setClipName(file.name); setSelectedVideo(file); }}
-            selectedVideo={selectedVideo}
-          />
+          {twitchClip ? (
+            <div className="twitch-selected">
+              <img src={twitchClip.thumbnailUrl} alt={twitchClip.title} className="twitch-selected-thumb" />
+              <div className="twitch-selected-info">
+                <p className="twitch-selected-title">{twitchClip.title}</p>
+                <p className="twitch-selected-meta">
+                  {formatDuration(twitchClip.duration)} &middot; {twitchClip.viewCount.toLocaleString()} views
+                </p>
+              </div>
+              <button
+                type="button"
+                className="twitch-selected-remove"
+                onClick={() => { setTwitchClip(null); setClipName(""); }}
+              >✕</button>
+            </div>
+          ) : (
+            <DropZone
+              onFile={(file) => { setClipName(file.name); setSelectedVideo(file); }}
+              selectedVideo={selectedVideo}
+            />
+          )}
+
+          {connected.twitch && (
+            <button type="button" className="twitch-import-btn" onClick={openTwitchPicker}>
+              ◉ Browse Twitch Clips
+            </button>
+          )}
 
           <div className="grid">
             <label className="field">
@@ -441,7 +527,67 @@ export default function Home() {
           />
         </section>
       </main>
+
+      {showTwitchPicker && (
+        <TwitchClipPicker
+          clips={twitchClips}
+          loading={twitchLoading}
+          cursor={twitchCursor}
+          onSelect={selectTwitchClip}
+          onClose={() => setShowTwitchPicker(false)}
+          onLoadMore={(c) => fetchTwitchClips(c)}
+        />
+      )}
     </>
+  );
+}
+
+function formatDuration(seconds) {
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+function TwitchClipPicker({ clips, loading, cursor, onSelect, onClose, onLoadMore }) {
+  return (
+    <div className="twitch-picker-overlay" onClick={onClose}>
+      <div className="twitch-picker" onClick={(e) => e.stopPropagation()}>
+        <div className="twitch-picker-header">
+          <h2>Twitch Clips</h2>
+          <button className="twitch-picker-close" onClick={onClose}>✕</button>
+        </div>
+        {loading && clips.length === 0 ? (
+          <p className="twitch-picker-empty">Loading clips...</p>
+        ) : clips.length === 0 ? (
+          <p className="twitch-picker-empty">No clips found on your channel.</p>
+        ) : (
+          <>
+            <div className="twitch-clip-grid">
+              {clips.map((clip) => (
+                <button key={clip.id} className="twitch-clip-item" onClick={() => onSelect(clip)}>
+                  <div className="twitch-clip-thumb-wrap">
+                    <img src={clip.thumbnailUrl} alt={clip.title} className="twitch-clip-thumb" />
+                    <span className="twitch-clip-dur">{formatDuration(clip.duration)}</span>
+                  </div>
+                  <p className="twitch-clip-title">{clip.title}</p>
+                  <p className="twitch-clip-views">{clip.viewCount.toLocaleString()} views</p>
+                </button>
+              ))}
+            </div>
+            {cursor && (
+              <button
+                className="secondary-btn"
+                style={{ margin: "16px auto 0", display: "block" }}
+                onClick={() => onLoadMore(cursor)}
+                disabled={loading}
+              >
+                {loading ? "Loading..." : "Load more"}
+              </button>
+            )}
+          </>
+        )}
+      </div>
+    </div>
   );
 }
 

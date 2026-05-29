@@ -26,13 +26,27 @@ export async function middleware(request) {
   );
 
   // Refresh session so it doesn't expire mid-visit
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user }, error } = await supabase.auth.getUser();
 
-  // Guard the main app and account page
+  // Stale/revoked refresh token — wipe the bad cookies so the loop stops.
+  // API routes get a clean next() so their handlers can return 401 normally.
+  // Page routes get redirected to login.
+  if (error?.code === "refresh_token_not_found") {
+    const isApiRoute = request.nextUrl.pathname.startsWith("/api/");
+    const response = isApiRoute
+      ? NextResponse.next({ request })
+      : NextResponse.redirect(new URL("/login", request.url));
+    request.cookies.getAll().forEach(({ name }) => {
+      if (name.startsWith("sb-")) response.cookies.delete(name);
+    });
+    return response;
+  }
+
   const { pathname } = request.nextUrl;
-  const isProtected = pathname === "/" || pathname.startsWith("/account");
+  const isProtected =
+    pathname === "/" ||
+    pathname.startsWith("/account") ||
+    pathname.startsWith("/editor");
   if (isProtected && !user) {
     return NextResponse.redirect(new URL("/login", request.url));
   }

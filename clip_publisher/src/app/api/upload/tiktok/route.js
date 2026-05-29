@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 // TikTok PULL_FROM_URL: TikTok fetches the video from our Supabase Storage URL.
 // The signed URL is valid for 1 hour — enough time for TikTok to pull the video.
 export async function POST(request) {
-  const { caption, storagePath } = await request.json();
+  const { caption, storagePath, videoUrl: directVideoUrl } = await request.json();
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -21,13 +21,18 @@ export async function POST(request) {
     return NextResponse.json({ error: "TikTok not connected" }, { status: 400 });
   }
 
-  const adminClient = createAdminClient();
-  const { data: urlData, error: urlError } = await adminClient.storage
-    .from("clips")
-    .createSignedUrl(storagePath, 3600);
-
-  if (urlError) {
-    return NextResponse.json({ error: "Could not generate video URL" }, { status: 500 });
+  let videoUrl;
+  if (directVideoUrl) {
+    videoUrl = directVideoUrl;
+  } else {
+    const adminClient = createAdminClient();
+    const { data: urlData, error: urlError } = await adminClient.storage
+      .from("clips")
+      .createSignedUrl(storagePath, 3600);
+    if (urlError) {
+      return NextResponse.json({ error: "Could not generate video URL" }, { status: 500 });
+    }
+    videoUrl = urlData.signedUrl;
   }
 
   const postRes = await fetch(
@@ -48,7 +53,7 @@ export async function POST(request) {
         },
         source_info: {
           source: "PULL_FROM_URL",
-          video_url: urlData.signedUrl,
+          video_url: videoUrl,
         },
       }),
     }

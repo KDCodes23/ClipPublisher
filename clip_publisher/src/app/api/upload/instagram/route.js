@@ -6,7 +6,7 @@ import { NextResponse } from "next/server";
 // Processing can take 30–120s, so we return the creation_id immediately.
 // The client polls /api/upload/instagram/publish to check status and publish.
 export async function POST(request) {
-  const { caption, storagePath } = await request.json();
+  const { caption, storagePath, videoUrl: directVideoUrl } = await request.json();
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -26,13 +26,18 @@ export async function POST(request) {
     );
   }
 
-  const adminClient = createAdminClient();
-  const { data: urlData, error: urlError } = await adminClient.storage
-    .from("clips")
-    .createSignedUrl(storagePath, 3600);
-
-  if (urlError) {
-    return NextResponse.json({ error: "Could not generate video URL" }, { status: 500 });
+  let videoUrl;
+  if (directVideoUrl) {
+    videoUrl = directVideoUrl;
+  } else {
+    const adminClient = createAdminClient();
+    const { data: urlData, error: urlError } = await adminClient.storage
+      .from("clips")
+      .createSignedUrl(storagePath, 3600);
+    if (urlError) {
+      return NextResponse.json({ error: "Could not generate video URL" }, { status: 500 });
+    }
+    videoUrl = urlData.signedUrl;
   }
 
   const containerRes = await fetch(
@@ -42,7 +47,7 @@ export async function POST(request) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         media_type: "REELS",
-        video_url: urlData.signedUrl,
+        video_url: videoUrl,
         caption,
         access_token: account.access_token,
       }),
