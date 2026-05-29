@@ -31,7 +31,7 @@ async function refreshTwitchToken(supabase, userId, refreshToken) {
 }
 
 export async function GET(request) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
